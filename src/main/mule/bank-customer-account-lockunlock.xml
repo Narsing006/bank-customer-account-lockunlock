@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:snowflake="http://www.mulesoft.org/schema/mule/snowflake" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/snowflake http://www.mulesoft.org/schema/mule/snowflake/current/mule-snowflake.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+    <http:listener-config name="bank-customer-account-lockunlock-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="bank-customer-account-lockunlock-config" api="bank-customer-account-lockunlock.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <snowflake:snowflake-config name="Snowflake_Config" doc:name="Snowflake Config" doc:id="915c9d45-a758-408e-be73-0e7fc0156481" >
+		<snowflake:snowflake-connection accountName="PTWXDSX-CF63578" warehouse="COMPUTE_WH" database="HOSPITALLOCATORDB" schema="PUBLIC" user="SINGSING" password="Narsing@12345678" role="ACCOUNTADMIN" />
+	</snowflake:snowflake-config>
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="01d421f5-ce2c-45f6-b667-cab4144846fb" >
+		<email:smtp-connection host="smtp.gmail.com" port="587" user="narsingbeesetti06@gmail.com" password="kejo yanz wjpo vnum" >
+			<email:properties >
+				<email:property key="mail.smtp.starttls.enable" value="true" />
+			</email:properties>
+		</email:smtp-connection>
+	</email:smtp-config>
+	<ee:object-store-caching-strategy name="Caching_Strategy" doc:name="Caching Strategy" doc:id="f59c8f15-00ab-4668-b0ac-b5192085bff6" keyGenerationExpression="#[attributes.queryParams.bank]" />
+	<flow name="bank-customer-account-lockunlock-main">
+        <http:listener config-ref="bank-customer-account-lockunlock-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="bank-customer-account-lockunlock-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="bank-customer-account-lockunlock-console">
+        <http:listener config-ref="bank-customer-account-lockunlock-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="bank-customer-account-lockunlock-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="put:\accountLockUnlock:application\json:bank-customer-account-lockunlock-config">
+        <logger level="INFO" doc:name="API start flow" doc:id="db87605a-58ca-45a0-b941-0cb52cf25849" message="------------------------Account Lock/Unlock API triggered-----------------"/>
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;var inp = []&#10;---&#10;inp &lt;&lt; payload reduce ((item, accumulator) -&gt; item)]" doc:name="inputPayload" doc:id="af1ee0e2-c50b-4fc2-9aff-00a912be48f1" variableName="inputPayload"/>
+		<snowflake:select doc:name="Verify  account in DB" doc:id="69a95f99-90c8-40ea-b876-bdea382e0925" config-ref="Snowflake_Config">
+			<snowflake:sql ><![CDATA[select * from  bank_transactions where custaccNum = :accountNum and bankName = :bank]]></snowflake:sql>
+			<snowflake:input-parameters ><![CDATA[#[{
+	accountNum: vars.inputPayload.accountNum,
+	bank: vars.inputPayload.bank
+}]]]></snowflake:input-parameters>
+		</snowflake:select>
+		<set-variable value="#[payload.MAILLD[0]]" doc:name="email" doc:id="5149c8ba-1052-4bb7-b938-09414a133d30" variableName="email"/>
+		<choice doc:name="Choice" doc:id="6258beb8-2fff-4e86-84d7-7008d9dddf4f" >
+			<when expression='#[sizeOf(payload) == 1 and payload.ACCOUNTSTATUS[0] == "Active" and vars.inputPayload.accountStatus == "Lock"]'>
+				<logger level="INFO" doc:name="Perform Locked status" doc:id="64d986ee-1e45-4929-85e9-99c5c9535723" message="--------------------------------Perform Locked status-------------------------------"/>
+				<snowflake:update doc:name="Update as locked account" doc:id="373ce45d-d63e-4db5-a9c1-0449f9e1d2f5" config-ref="Snowflake_Config" >
+					<snowflake:sql ><![CDATA[update bank_transactions set ACCOUNTSTATUS = 'Locked' where custaccnum = :accountNum and bankname = :bankName]]></snowflake:sql>
+					<snowflake:input-parameters ><![CDATA[#[{
+	accountNum: vars.inputPayload.accountNum,
+	bankName: vars.inputPayload.bank
+}]]]></snowflake:input-parameters>
+				</snowflake:update>
+				<email:send doc:name="email Send to user for locked account" doc:id="1f963deb-9af2-4caa-9fd4-2465ae2ead69" config-ref="Email_SMTP" fromAddress="narsingbeesetti06@gmail.com" subject='#["Account Locked ! in -" ++ vars.inputPayload.bank as String]'>
+					<email:to-addresses >
+						<email:to-address value="#[vars.email]" />
+					</email:to-addresses>
+					<email:body contentType="text/plain">
+						<email:content ><![CDATA[#["This is inform you that your account has been Locked. Please visit nearest Branch to Unlock your account"]]]></email:content>
+					</email:body>
+				</email:send>
+				<ee:transform doc:name="Success for Lock">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  status: "Your account -" ++ vars.inputPayload.accountNum as String ++ " with Bank -" ++ vars.inputPayload.bank as String++ " is locked Now "
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+			</when>
+			<when expression='#[sizeOf(payload) == 1 and payload.ACCOUNTSTATUS[0] == "Locked" and vars.inputPayload.accountStatus == "Lock"]'>
+				<logger level="INFO" doc:name="Account is already locked" doc:id="138d7e1d-4c66-4c9b-8145-6748fc0b2ae6" message="-----------------------------Account is already locked----------------------"/>
+				<ee:transform doc:name="Account already locked" doc:id="05109db5-d4c3-462c-9c0b-3be7b5c95e63" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Your Account "++ vars.inputPayload.accountNum as String++ " is already locked"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression='#[sizeOf(payload) == 1 and payload.ACCOUNTSTATUS[0] == "Locked" and vars.inputPayload.accountStatus == "Unlock"]'>
+				<logger level="INFO" doc:name="perform Unlock" doc:id="b7c2f5ba-d068-4b6e-8b49-9f3dfdaedb1b" message="----------------------------perform Unlock--------------------"/>
+				<snowflake:update doc:name="Update as Active Account and wrong pin set as 0" doc:id="68c3cc6b-ceec-4cf1-a5ad-ad75e4558ced" config-ref="Snowflake_Config" >
+					<snowflake:sql ><![CDATA[update bank_transactions set WRONGPIN = 0, ACCOUNTSTATUS = 'Active' where custaccnum = :accountNum and bankname = :bankName
+]]></snowflake:sql>
+					<snowflake:input-parameters ><![CDATA[#[{
+	accountNum: vars.inputPayload.accountNum,
+	bankName: vars.inputPayload.bank
+}]]]></snowflake:input-parameters>
+				</snowflake:update>
+				<email:send doc:name="email Send to user for Unlocked account" doc:id="c3a2970b-cbc0-4448-945d-06fb9b6f86f7" config-ref="Email_SMTP" fromAddress="narsingbeesetti06@gmail.com" subject='#["Account Unlock ! in -" ++ vars.inputPayload.bank as String]'>
+					<email:to-addresses>
+						<email:to-address value="#[vars.email]" />
+					</email:to-addresses>
+					<email:body contentType="text/plain">
+						<email:content><![CDATA[#["This is inform you that your account has been Unlocked."]]]></email:content>
+					</email:body>
+				</email:send>
+				<ee:transform doc:name="Success for unlock" doc:id="d9313af8-8df2-4096-8cf3-fff05a38d977" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  status: "Your account -" ++ vars.inputPayload.accountNum as String ++ " with Bank -" ++ vars.inputPayload.bank as String ++ " is Active Now "
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression='#[sizeOf(payload) == 1 and payload.ACCOUNTSTATUS[0] == "Active" and vars.inputPayload.accountStatus == "Unlock"]'>
+				<logger level="INFO" doc:name="already Active" doc:id="1d02b1b0-f88a-4eb3-98df-1771f1fd556b" message="-----------------------------already Active-------------------------------"/>
+				<ee:transform doc:name="Account already Unlocked/Active" doc:id="78d87e48-bd88-4f40-a5a1-55369302b17d" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Your Account "++ vars.inputPayload.accountNum as String++ " is already Unlocked/Active"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Account does not exist" doc:id="0106f9e9-cbea-42a1-9ccd-4b8661efd60b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Account " ++ vars.inputPayload.accountNum as Number ++ " does not exit in Bank "++ vars.inputPayload.bank as String ++". Please Enter Valid Details"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+    </flow>
+    <flow name="get:\getLockedAccounts:bank-customer-account-lockunlock-config">
+        <logger level="INFO" doc:name="Get locked accounts flow" doc:id="8944a756-c4c3-460d-a784-89469c4380ea" message="----------------------------Get locked accounts flow--------------------------"/>
+		<ee:cache doc:name="Cache" doc:id="24c56286-6929-483d-847a-161852003b51" cachingStrategy-ref="Caching_Strategy">
+			<logger level="INFO" doc:name="Before hit database" doc:id="0eab486b-1561-4439-aad5-6176ac521d63" message="----------------------------Before hit database-----------------------------"/>
+			<snowflake:select doc:name="Get locked accounts based on the bank" doc:id="f5ed2807-691c-48c8-ba60-0faeb669cc33" config-ref="Snowflake_Config">
+			<snowflake:sql><![CDATA[select * from  bank_transactions where accountStatus = :accountStatus and bankName = :bank]]></snowflake:sql>
+			<snowflake:input-parameters><![CDATA[#[{
+	accountStatus: attributes.queryParams.accountStatus,
+	bank: attributes.queryParams.bank
+}]]]></snowflake:input-parameters>
+		</snowflake:select>
+		</ee:cache>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( item , index ) -> {
+	customerName: item.CUSTNAME,
+	bank: item.BANKNAME,
+	"type": item.ACCOUNTTYPE,
+	branchName: item.BRANCHNAME,
+	accountNum: item.CUSTACCNUM,
+	ifscCode: item.IFSCCODE,
+	mailId: item.MAILLD,
+	cardStatus: item.ACCOUNTSTATUS,
+} ]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>

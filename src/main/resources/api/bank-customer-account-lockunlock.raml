@@ -1,0 +1,47 @@
+#%RAML 1.0
+title: bank-customer-account-LockUnlock
+version: v1
+description: "This API is used to ADMIN for to lock/Unlock the account"
+protocols:
+  - HTTP
+  - HTTPS
+securitySchemes:
+  secure: !include SecuritySchema/securityScheme.raml
+securedBy:
+  - secure
+/accountLockUnlock:
+  put:
+    body:
+      application/json:
+        type: !include DataTypes/inputPropertiesLockUnlock.raml
+        example: !include examples/req/inputReqexample.raml
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include examples/response/LockUnlockresponse.raml
+/getLockedAccounts:
+  get:
+    queryParameters:
+      bank:
+        required: true
+        enum:
+          - HDFC
+          - SBI
+          - ICICI
+          - AXIS
+      accountStatus:
+        required: true
+        enum:
+          - Locked
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include examples/response/lockedAccounts.raml
+        
+      
+
+
+           
+              
